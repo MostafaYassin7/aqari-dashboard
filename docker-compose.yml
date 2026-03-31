@@ -1,0 +1,9 @@
+services:
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aqar_admin
+    restart: always
+    ports:
+      - "4000:4000"
