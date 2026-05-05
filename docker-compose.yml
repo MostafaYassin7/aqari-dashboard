@@ -6,4 +6,4 @@ services:
     container_name: aqar_admin
     restart: always
     ports:
-      - "4000:4000"
+      - "5000:5000"
