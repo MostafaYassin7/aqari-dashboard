@@ -1,0 +1,20 @@
+name: Dashboard — Deploy to GCP via Dokploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Trigger Dokploy Deployment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Dokploy deployment
+        run: |
+          curl -X GET "${{ secrets.DOKPLOY_WEBHOOK_URL }}" \
+            --fail --silent --show-error
+
+      - name: Deployment triggered
+        run: echo "✅ Dokploy deployment triggered"
