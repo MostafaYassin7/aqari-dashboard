@@ -22,14 +22,14 @@ export const VerifyOtpPage: React.FC = () => {
       {
         onSuccess: (data) => {
           setLoading(false);
-          if (!data.success) {
-            setError("Authentication failed");
+          if (!data?.success) {
+            setError((data?.error as { message?: string })?.message || "Invalid OTP code");
           }
           // Refine handles the redirect automatically via authProvider.login's redirectTo
         },
-        onError: (err) => {
+        onError: (err: unknown) => {
           setLoading(false);
-          setError(err?.message || "Invalid OTP code");
+          setError((err as { message?: string })?.message || "Invalid OTP code");
         },
       }
     );

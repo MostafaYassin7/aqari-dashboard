@@ -24,15 +24,15 @@ export const LoginPage: React.FC = () => {
       {
         onSuccess: (data) => {
           setLoading(false);
-          // Refine handles redirect automatically, but it doesn't navigate for
-          // intermediate steps so we push manually to the OTP page
-          if (data.success && data.redirectTo) {
+          if (data?.success && data?.redirectTo) {
             push(data.redirectTo as string);
+          } else if (!data?.success) {
+            setError((data?.error as { message?: string })?.message || "Failed to send OTP");
           }
         },
-        onError: (err) => {
+        onError: (err: unknown) => {
           setLoading(false);
-          setError(err?.message || "Failed to send OTP");
+          setError((err as { message?: string })?.message || "Failed to send OTP");
         },
       }
     );
