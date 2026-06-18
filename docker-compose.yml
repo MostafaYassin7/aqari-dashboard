@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: https://api.aqora.sa/api/v1
     container_name: aqar_admin
     restart: always
     ports:
