@@ -16,7 +16,9 @@ import {
   FlagOutlined,
   RocketOutlined,
   ArrowUpOutlined,
+  AuditOutlined,
 } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import { API_URL } from "../../config";
 
 const { Title, Text } = Typography;
@@ -75,6 +77,7 @@ function extractTotal(data: unknown): number {
 
 export const DashboardPage: React.FC = () => {
   const { data: identity } = useGetIdentity<{ name: string; phone: string }>();
+  const navigate = useNavigate();
 
   const { data: listingsData, isLoading: listingsLoading } = useCustom({
     url: `${API_URL}/listings`,
@@ -100,6 +103,15 @@ export const DashboardPage: React.FC = () => {
     config: { query: { page: 1, limit: 5 } },
   });
 
+  // GET /property-advertisement-licenses/pending/count
+  // Returns { count: number } — number of licenses awaiting admin review
+  const { data: licCountData } = useCustom({
+    url: `${API_URL}/property-advertisement-licenses/pending/count`,
+    method: "get",
+  });
+  const pendingLicensesCount: number =
+    (licCountData?.data as Record<string, Record<string, number>>)?.data?.count ?? 0;
+
   const recentListings = extractArray(listingsData?.data);
   const listingsTotal = extractTotal(listingsData?.data) || recentListings.length;
 
@@ -120,6 +132,34 @@ export const DashboardPage: React.FC = () => {
           </Title>
           <Text type="secondary">Here's what's happening on Aqar today</Text>
         </div>
+
+        {/* Pending Licenses — رخص الإعلانات في الانتظار */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} lg={8}>
+            <Card
+              bordered={false}
+              style={{
+                background: pendingLicensesCount > 0
+                  ? "linear-gradient(135deg, #ff4d4f, #cf1322)"
+                  : "linear-gradient(135deg, #52c41a, #389e0d)",
+                cursor: "pointer",
+              }}
+              onClick={() => navigate("/licenses")}
+            >
+              <Statistic
+                title={
+                  <span style={{ color: "rgba(255,255,255,0.85)" }}>
+                    Pending Licenses &nbsp;
+                    <span style={{ fontWeight: 400, fontSize: 12 }}>تراخيص في الانتظار</span>
+                  </span>
+                }
+                value={pendingLicensesCount}
+                prefix={<AuditOutlined style={{ color: "white" }} />}
+                valueStyle={{ color: "white" }}
+              />
+            </Card>
+          </Col>
+        </Row>
 
         {/* Stats Cards */}
         <Row gutter={[16, 16]}>

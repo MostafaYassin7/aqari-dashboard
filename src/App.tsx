@@ -21,6 +21,7 @@ import {
   ReadOutlined,
   DollarOutlined,
   DashboardOutlined,
+  AuditOutlined,
 } from "@ant-design/icons";
 
 import { authProvider } from "./authProvider";
@@ -51,6 +52,7 @@ import { BlogList } from "./pages/blog/list";
 import { BlogCreate } from "./pages/blog/create";
 import { BlogEdit } from "./pages/blog/edit";
 import { TransactionList } from "./pages/transactions/list";
+import { LicenseList } from "./pages/licenses/list";
 
 const FullPageSpinner = () => (
   <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -125,6 +127,12 @@ function App() {
                     list: "/transactions",
                     meta: { label: "Transactions", icon: <DollarOutlined /> },
                   },
+                  {
+                    // رخص الإعلانات العقارية — Property Advertisement Licenses
+                    name: "licenses",
+                    list: "/licenses",
+                    meta: { label: "Licenses", icon: <AuditOutlined /> },
+                  },
                 ]}
                 options={{ syncWithLocation: true, warnWhenUnsavedChanges: true }}
               >
@@ -178,6 +186,7 @@ function App() {
                     <Route path="/blog/create" element={<BlogCreate />} />
                     <Route path="/blog/:id/edit" element={<BlogEdit />} />
                     <Route path="/transactions" element={<TransactionList />} />
+                    <Route path="/licenses" element={<LicenseList />} />
                     <Route path="*" element={<ErrorComponent />} />
                   </Route>
                 </Routes>

@@ -1,12 +1,19 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { notification } from "antd";
 import { axiosInstance } from "../dataProvider";
 
 interface PendingCountCtx {
   count: number;
+  // رقم التراخيص في الانتظار — pending property advertisement licenses count
+  licenseCount: number;
+  refetchLicenseCount: () => void;
 }
 
-const PendingCountContext = createContext<PendingCountCtx>({ count: 0 });
+const PendingCountContext = createContext<PendingCountCtx>({
+  count: 0,
+  licenseCount: 0,
+  refetchLicenseCount: () => {},
+});
 
 export const usePendingCount = () => useContext(PendingCountContext);
 
@@ -14,7 +21,9 @@ export const PendingCountProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [count, setCount] = useState(0);
+  const [licenseCount, setLicenseCount] = useState(0);
   const prevRef = useRef<number | null>(null);
+  const prevLicenseRef = useRef<number | null>(null);
 
   const fetchCount = async () => {
     try {
@@ -42,15 +51,48 @@ export const PendingCountProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // Fetches count of pending property advertisement licenses
+  // GET /property-advertisement-licenses/pending/count
+  // Called on mount and every 60 seconds
+  const fetchLicenseCount = useCallback(async () => {
+    try {
+      const { data } = await axiosInstance.get(
+        "/property-advertisement-licenses/pending/count"
+      );
+      // Response: { success: true, data: { count: number } }
+      const total: number = (data?.data as Record<string, number>)?.count ?? 0;
+
+      if (prevLicenseRef.current !== null && total > prevLicenseRef.current) {
+        const diff = total - prevLicenseRef.current;
+        notification.info({
+          message: "New Pending Licenses",
+          description: `${diff} new license${diff > 1 ? "s" : ""} awaiting review`,
+          placement: "topRight",
+          duration: 8,
+        });
+      }
+      prevLicenseRef.current = total;
+      setLicenseCount(total);
+    } catch {
+      // silently fail — don't interrupt the UI
+    }
+  }, []);
+
   useEffect(() => {
     fetchCount();
-    const id = setInterval(fetchCount, 60_000);
+    fetchLicenseCount();
+    const id = setInterval(() => {
+      fetchCount();
+      fetchLicenseCount();
+    }, 60_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <PendingCountContext.Provider value={{ count }}>
+    <PendingCountContext.Provider
+      value={{ count, licenseCount, refetchLicenseCount: fetchLicenseCount }}
+    >
       {children}
     </PendingCountContext.Provider>
   );

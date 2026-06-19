@@ -14,6 +14,7 @@ import {
   PlusCircleOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  AuditOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { usePendingCount } from "../../context/PendingCountContext";
@@ -25,7 +26,7 @@ type MenuItem = Required<MenuProps>["items"][number];
 
 export const CustomSider: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const { count: pendingCount } = usePendingCount();
+  const { count: pendingCount, licenseCount } = usePendingCount();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -86,6 +87,18 @@ export const CustomSider: React.FC = () => {
     ),
     item("/listings/create", "New Listing", <PlusCircleOutlined style={{ color: "#1677ff" }} />),
     divider("d2"),
+
+    // رخص الإعلانات العقارية — Property Advertisement Licenses
+    item(
+      "/licenses",
+      "Licenses",
+      <AuditOutlined style={{ color: licenseCount > 0 ? "#ff4d4f" : undefined }} />,
+      () => navigate("/licenses"),
+      licenseCount > 0 ? (
+        <Badge count={licenseCount} size="small" style={{ marginLeft: 4, backgroundColor: "#ff4d4f" }} />
+      ) : null
+    ),
+    divider("d-lic"),
 
     item("/projects", "Projects", <ProjectOutlined />),
     item("/projects/create", "New Project", <PlusCircleOutlined style={{ color: "#1677ff" }} />),
