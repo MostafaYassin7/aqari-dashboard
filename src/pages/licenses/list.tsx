@@ -91,8 +91,12 @@ interface License {
   // ── معلومات المالك (owner / agent / broker) ───────────────
   // نوع هوية المالك
   propertyOwnerIdType: OwnerIdType | null;
-  // رقم هوية المالك
-  propertyOwnerIdNumber: string | null;
+  // رقم الهوية الوطنية للمالك — only when propertyOwnerIdType = 'national_id'
+  ownerNationalIdNumber: string | null;
+  // رقم السجل التجاري للمنشأة المالكة — only when propertyOwnerIdType = 'commercial_registration'
+  ownerCommercialRegNumber: string | null;
+  // الرقم الموحد 700 للمنشأة المالكة — only when propertyOwnerIdType = 'unified_700'
+  ownerUnifiedNumber: string | null;
   // تاريخ ميلاد المالك
   propertyOwnerBirthDate: string | null;
   // هل التاريخ بالتقويم الهجري؟
@@ -101,8 +105,6 @@ interface License {
   propertyOwnerPhone: string | null;
   // رقم هوية أحد الملاك (عند وجود ملاك متعددين)
   oneOfOwnersNationalId: string | null;
-  // رقم السجل التجاري للمنشأة
-  establishmentCommercialRegNumber: string | null;
 
   // ── معلومات الوكيل (agent ONLY) ───────────────────────────
   // رقم الوكالة الرسمية (صادرة من وزارة العدل)
@@ -767,7 +769,15 @@ const LicenseDetailContent: React.FC<{
                   ? OWNER_ID_TYPE_AR[license.propertyOwnerIdType]
                   : "—",
               },
-              { key: "ownerIdNum",   label: "رقم هوية المالك",     children: v(license.propertyOwnerIdNumber) },
+              ...(license.ownerNationalIdNumber
+                ? [{ key: "ownerNatId", label: "رقم الهوية الوطنية للمالك", children: v(license.ownerNationalIdNumber) }]
+                : []),
+              ...(license.ownerCommercialRegNumber
+                ? [{ key: "ownerCommReg", label: "رقم السجل التجاري للمنشأة", children: v(license.ownerCommercialRegNumber) }]
+                : []),
+              ...(license.ownerUnifiedNumber
+                ? [{ key: "ownerUnified", label: "الرقم الموحد 700 للمنشأة", children: v(license.ownerUnifiedNumber) }]
+                : []),
               {
                 key: "ownerBirth",
                 label: "تاريخ ميلاد المالك",
@@ -777,7 +787,6 @@ const LicenseDetailContent: React.FC<{
               },
               { key: "ownerPhone",  label: "رقم جوال المالك",      children: v(license.propertyOwnerPhone) },
               { key: "oneOwner",    label: "رقم هوية أحد الملاك",  children: v(license.oneOfOwnersNationalId) },
-              { key: "commReg",     label: "رقم السجل التجاري",    children: v(license.establishmentCommercialRegNumber) },
             ]} />
           </div>
         </>
