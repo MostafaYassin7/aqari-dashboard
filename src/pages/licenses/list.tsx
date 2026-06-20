@@ -224,9 +224,9 @@ export const LicenseList: React.FC = () => {
     try {
       setLoading(true);
       const { data } = await axiosInstance.get(
-        "/property-advertisement-licenses/pending"
+        "/property-advertisement-licenses/all"
       );
-      // Response: { success: true, data: License[] | { data: License[] } }
+      // Response: { success: true, data: { data: License[], total, page, pages } }
       const payload = data?.data;
       const list: License[] = Array.isArray(payload)
         ? payload
