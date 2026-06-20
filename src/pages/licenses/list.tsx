@@ -77,8 +77,9 @@ interface License {
     adNumber: string;
     title: string;
     city: string;
-    listingType: string;
-    totalPrice: number;
+    status: string;
+    listingType?: string;
+    totalPrice?: number;
   } | null;
 
   // ── وثيقة الملكية (owner / agent) ────────────────────────
@@ -178,16 +179,6 @@ function formatDate(iso: string | null | undefined): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
-
-/** One labeled row in the detail drawer */
-const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({
-  label,
-  value,
-}) => (
-  <Descriptions.Item label={<Text type="secondary">{label}</Text>}>
-    {value ?? <Text type="secondary">—</Text>}
-  </Descriptions.Item>
-);
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -710,6 +701,9 @@ export const LicenseList: React.FC = () => {
 /**
  * All license fields organized into labeled sections.
  * Sections are shown/hidden based on advertiserType (نوع المُعلن).
+ *
+ * Uses Descriptions `items` prop (Ant Design v5) so values actually render —
+ * wrapping Descriptions.Item in a custom component breaks child detection.
  */
 const LicenseDetailContent: React.FC<{
   license: License;
@@ -719,33 +713,24 @@ const LicenseDetailContent: React.FC<{
     bordered: true,
     size: "small" as const,
     column: 1,
-    labelStyle: { width: 160, color: "#888" },
-    contentStyle: { fontWeight: 500 },
+    labelStyle: { width: 165, color: "#888", whiteSpace: "nowrap" as const },
   };
 
-  const val = (v: string | null | undefined) =>
-    v ? <Text>{v}</Text> : <Text type="secondary">—</Text>;
+  // Returns "—" for null/empty values
+  const v = (s: string | null | undefined) => s || "—";
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+
       {/* ── معلومات المُعلن — Advertiser Info ── */}
       <div>
-        <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>
-          معلومات المُعلن
-        </Title>
-        <Descriptions {...descProps}>
-          <DetailRow label="Name" value={val(license.advertiserUser?.name)} />
-          <DetailRow label="Phone" value={val(license.advertiserUser?.phone)} />
-          <DetailRow label="Role" value={val(license.advertiserUser?.role)} />
-          <DetailRow
-            label="نوع المُعلن"
-            value={
-              <Text>
-                {ADVERTISER_TYPE_AR[license.advertiserType] || license.advertiserType}
-              </Text>
-            }
-          />
-        </Descriptions>
+        <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>معلومات المُعلن</Title>
+        <Descriptions {...descProps} items={[
+          { key: "name",  label: "Name",        children: v(license.advertiserUser?.name) },
+          { key: "phone", label: "Phone",       children: v(license.advertiserUser?.phone) },
+          { key: "role",  label: "Role",        children: v(license.advertiserUser?.role) },
+          { key: "type",  label: "نوع المُعلن", children: ADVERTISER_TYPE_AR[license.advertiserType] || license.advertiserType },
+        ]} />
       </div>
 
       {/* ── وثيقة الملكية — Ownership Document (owner / agent) ── */}
@@ -753,23 +738,17 @@ const LicenseDetailContent: React.FC<{
         <>
           <Divider style={{ margin: "4px 0" }} />
           <div>
-            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>
-              وثيقة الملكية
-            </Title>
-            <Descriptions {...descProps}>
-              <DetailRow
-                label="نوع وثيقة الملكية"
-                value={
-                  license.ownershipDocumentType
-                    ? OWNERSHIP_DOC_TYPE_AR[license.ownershipDocumentType]
-                    : null
-                }
-              />
-              <DetailRow
-                label="رقم الوثيقة"
-                value={val(license.ownershipDocumentNumber)}
-              />
-            </Descriptions>
+            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>وثيقة الملكية</Title>
+            <Descriptions {...descProps} items={[
+              {
+                key: "docType",
+                label: "نوع وثيقة الملكية",
+                children: license.ownershipDocumentType
+                  ? OWNERSHIP_DOC_TYPE_AR[license.ownershipDocumentType]
+                  : "—",
+              },
+              { key: "docNum", label: "رقم الوثيقة", children: v(license.ownershipDocumentNumber) },
+            ]} />
           </div>
         </>
       )}
@@ -779,48 +758,27 @@ const LicenseDetailContent: React.FC<{
         <>
           <Divider style={{ margin: "4px 0" }} />
           <div>
-            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>
-              معلومات المالك
-            </Title>
-            <Descriptions {...descProps}>
-              <DetailRow
-                label="نوع هوية المالك"
-                value={
-                  license.propertyOwnerIdType
-                    ? OWNER_ID_TYPE_AR[license.propertyOwnerIdType]
-                    : null
-                }
-              />
-              <DetailRow
-                label="رقم هوية المالك"
-                value={val(license.propertyOwnerIdNumber)}
-              />
-              <DetailRow
-                label="تاريخ ميلاد المالك"
-                value={
-                  license.propertyOwnerBirthDate ? (
-                    <Text>
-                      {formatDate(license.propertyOwnerBirthDate)}{" "}
-                      <Text type="secondary" style={{ fontSize: 11 }}>
-                        ({license.isHijriCalendar ? "هجري" : "ميلادي"})
-                      </Text>
-                    </Text>
-                  ) : null
-                }
-              />
-              <DetailRow
-                label="رقم جوال المالك"
-                value={val(license.propertyOwnerPhone)}
-              />
-              <DetailRow
-                label="رقم هوية أحد الملاك"
-                value={val(license.oneOfOwnersNationalId)}
-              />
-              <DetailRow
-                label="رقم السجل التجاري"
-                value={val(license.establishmentCommercialRegNumber)}
-              />
-            </Descriptions>
+            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>معلومات المالك</Title>
+            <Descriptions {...descProps} items={[
+              {
+                key: "ownerIdType",
+                label: "نوع هوية المالك",
+                children: license.propertyOwnerIdType
+                  ? OWNER_ID_TYPE_AR[license.propertyOwnerIdType]
+                  : "—",
+              },
+              { key: "ownerIdNum",   label: "رقم هوية المالك",     children: v(license.propertyOwnerIdNumber) },
+              {
+                key: "ownerBirth",
+                label: "تاريخ ميلاد المالك",
+                children: license.propertyOwnerBirthDate
+                  ? `${formatDate(license.propertyOwnerBirthDate)} (${license.isHijriCalendar ? "هجري" : "ميلادي"})`
+                  : "—",
+              },
+              { key: "ownerPhone",  label: "رقم جوال المالك",      children: v(license.propertyOwnerPhone) },
+              { key: "oneOwner",    label: "رقم هوية أحد الملاك",  children: v(license.oneOfOwnersNationalId) },
+              { key: "commReg",     label: "رقم السجل التجاري",    children: v(license.establishmentCommercialRegNumber) },
+            ]} />
           </div>
         </>
       )}
@@ -830,28 +788,14 @@ const LicenseDetailContent: React.FC<{
         <>
           <Divider style={{ margin: "4px 0" }} />
           <div>
-            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>
-              معلومات الوكيل
-            </Title>
-            <Descriptions {...descProps}>
-              {/* رقم الوكالة الرسمية — issued by Saudi Ministry of Justice */}
-              <DetailRow
-                label="رقم الوكالة الرسمية"
-                value={val(license.powerOfAttorneyNumber)}
-              />
-              <DetailRow
-                label="رقم الهوية الوطنية للوكيل"
-                value={val(license.agentNationalIdNumber)}
-              />
-              <DetailRow
-                label="تاريخ ميلاد الوكيل"
-                value={val(formatDate(license.agentBirthDate) === "—" ? null : formatDate(license.agentBirthDate))}
-              />
-              <DetailRow
-                label="رقم جوال الوكيل"
-                value={val(license.agentPhone)}
-              />
-            </Descriptions>
+            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>معلومات الوكيل</Title>
+            <Descriptions {...descProps} items={[
+              // رقم الوكالة الرسمية — issued by Saudi Ministry of Justice (وزارة العدل)
+              { key: "poa",       label: "رقم الوكالة الرسمية",         children: v(license.powerOfAttorneyNumber) },
+              { key: "agentId",   label: "رقم الهوية الوطنية للوكيل",   children: v(license.agentNationalIdNumber) },
+              { key: "agentBirth",label: "تاريخ ميلاد الوكيل",          children: license.agentBirthDate ? formatDate(license.agentBirthDate) : "—" },
+              { key: "agentPhone",label: "رقم جوال الوكيل",             children: v(license.agentPhone) },
+            ]} />
           </div>
         </>
       )}
@@ -861,21 +805,13 @@ const LicenseDetailContent: React.FC<{
         <>
           <Divider style={{ margin: "4px 0" }} />
           <div>
-            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>
-              معلومات المسوق
-            </Title>
-            <Descriptions {...descProps}>
-              {/* رقم رخصة فال — FAL license issued by الهيئة العامة للعقار */}
-              <DetailRow
-                label="رقم رخصة فال"
-                value={val(license.falLicenseNumber)}
-              />
-              {/* رقم عقد الوساطة — registered on eservicesredp.rega.gov.sa */}
-              <DetailRow
-                label="رقم عقد الوساطة"
-                value={val(license.brokerageContractNumber)}
-              />
-            </Descriptions>
+            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>معلومات المسوق</Title>
+            <Descriptions {...descProps} items={[
+              // رقم رخصة فال — issued by الهيئة العامة للعقار
+              { key: "fal",      label: "رقم رخصة فال",      children: v(license.falLicenseNumber) },
+              // رقم عقد الوساطة — registered on eservicesredp.rega.gov.sa
+              { key: "brokerage",label: "رقم عقد الوساطة",   children: v(license.brokerageContractNumber) },
+            ]} />
           </div>
         </>
       )}
@@ -885,31 +821,19 @@ const LicenseDetailContent: React.FC<{
         <>
           <Divider style={{ margin: "4px 0" }} />
           <div>
-            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>
-              الإعلان المرتبط
-            </Title>
-            <Descriptions {...descProps}>
-              <DetailRow
-                label="رقم الإعلان"
-                value={<Text code>{license.listing.adNumber}</Text>}
-              />
-              <DetailRow label="العنوان" value={val(license.listing.title)} />
-              <DetailRow label="المدينة" value={val(license.listing.city)} />
-              <DetailRow
-                label="نوع الإعلان"
-                value={val(license.listing.listingType)}
-              />
-              <DetailRow
-                label="السعر"
-                value={
-                  license.listing.totalPrice != null ? (
-                    <Text>
-                      {Number(license.listing.totalPrice).toLocaleString()} SAR
-                    </Text>
-                  ) : null
-                }
-              />
-            </Descriptions>
+            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>الإعلان المرتبط</Title>
+            <Descriptions {...descProps} items={[
+              { key: "adNum",  label: "رقم الإعلان", children: <Text code>{license.listing.adNumber}</Text> },
+              { key: "title",  label: "العنوان",      children: v(license.listing.title) },
+              { key: "city",   label: "المدينة",      children: v(license.listing.city) },
+              { key: "status", label: "الحالة",       children: v(license.listing.status) },
+              ...(license.listing.listingType
+                ? [{ key: "ltype", label: "نوع الإعلان", children: license.listing.listingType }]
+                : []),
+              ...(license.listing.totalPrice != null
+                ? [{ key: "price", label: "السعر", children: `${Number(license.listing.totalPrice).toLocaleString()} SAR` }]
+                : []),
+            ]} />
             <Button
               icon={<LinkOutlined />}
               size="small"
@@ -927,35 +851,23 @@ const LicenseDetailContent: React.FC<{
         <>
           <Divider style={{ margin: "4px 0" }} />
           <div>
-            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>
-              المراجعة
-            </Title>
-            <Descriptions {...descProps}>
-              <DetailRow
-                label="تاريخ المراجعة"
-                value={val(formatDateTime(license.reviewedAt))}
-              />
-              <DetailRow
-                label="الأدمن المسؤول"
-                value={val(license.reviewedByAdmin?.name)}
-              />
-              <DetailRow
-                label="حالة المراجعة"
-                value={STATUS_TAG[license.reviewStatus]}
-              />
-              {license.reviewStatus === "rejected" && (
-                <DetailRow
-                  label="سبب الرفض"
-                  value={
-                    license.rejectionReason ? (
-                      <Text style={{ direction: "rtl", display: "block" }}>
-                        {license.rejectionReason}
-                      </Text>
-                    ) : null
-                  }
-                />
-              )}
-            </Descriptions>
+            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>المراجعة</Title>
+            <Descriptions {...descProps} items={[
+              { key: "reviewedAt", label: "تاريخ المراجعة",   children: formatDateTime(license.reviewedAt) },
+              { key: "reviewedBy", label: "الأدمن المسؤول",   children: v(license.reviewedByAdmin?.name) },
+              { key: "status",     label: "حالة المراجعة",    children: STATUS_TAG[license.reviewStatus] },
+              ...(license.reviewStatus === "rejected"
+                ? [{
+                    key: "reason",
+                    label: "سبب الرفض",
+                    children: (
+                      <span style={{ direction: "rtl", display: "block" }}>
+                        {v(license.rejectionReason)}
+                      </span>
+                    ),
+                  }]
+                : []),
+            ]} />
           </div>
         </>
       )}
