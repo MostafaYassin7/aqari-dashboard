@@ -17,13 +17,20 @@ import {
   Row,
   Col,
   Spin,
-  Alert,
+  Upload,
+  Image,
 } from "antd";
-import { ArrowLeftOutlined, ArrowRightOutlined, SendOutlined } from "@ant-design/icons";
+import {
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  SendOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
+import type { UploadFile, RcFile } from "antd/es/upload/interface";
 import { axiosInstance } from "../../dataProvider";
 
 const { Title, Text } = Typography;
-const { Step } = Steps;
 
 const PROPERTY_TYPES = [
   "apartment","villa","floor","land","building","shop",
@@ -60,6 +67,7 @@ const STEP_FIELDS: string[][] = [
   ["totalPrice", "area", "bedrooms", "bathrooms", "livingRooms", "floor", "propertyAge", "streetWidth", "facade", "commissionPercent"],
   ["city", "district", "latitude", "longitude"],
   ["description"],
+  [], // Photos step — no form fields
   ["features", "checklist"],
 ];
 
@@ -68,10 +76,17 @@ export const ListingCreate: React.FC = () => {
   const [current, setCurrent] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [hasCommission, setHasCommission] = useState(false);
+
+  // Photo upload state
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState("");
+
   const { open } = useNotification();
   const navigate = useNavigate();
 
-  // Load categories
   const { data: catData, isLoading: catsLoading } = useList({
     resource: "listing-categories",
     pagination: { current: 1, pageSize: 100 },
@@ -81,9 +96,49 @@ export const ListingCreate: React.FC = () => {
     value: c.id as string,
   }));
 
+  const uploadPhotos = async (): Promise<string[]> => {
+    const pending = fileList.filter((f) => !f.url); // files not yet uploaded
+    if (pending.length === 0) return uploadedUrls;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      for (const f of pending) {
+        if (f.originFileObj) formData.append("files", f.originFileObj as RcFile);
+      }
+      const res = await axiosInstance.post<{ urls: string[] }>(
+        "/media/upload?folder=listings",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      );
+      const newUrls = res.data?.urls ?? [];
+      const allUrls = [...uploadedUrls, ...newUrls];
+      setUploadedUrls(allUrls);
+      // Mark files as uploaded so re-clicking Next doesn't re-upload
+      setFileList((prev) =>
+        prev.map((f, i) => {
+          if (!f.url) {
+            const urlIdx = i - (prev.length - pending.length);
+            return { ...f, url: newUrls[urlIdx] ?? f.url, status: "done" };
+          }
+          return f;
+        }),
+      );
+      return allUrls;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const next = async () => {
     try {
-      await form.validateFields(STEP_FIELDS[current]);
+      if (STEP_FIELDS[current].length > 0) {
+        await form.validateFields(STEP_FIELDS[current]);
+      }
+      // If leaving the photos step, upload pending files
+      if (current === 4) {
+        await uploadPhotos();
+      }
       setCurrent((c) => c + 1);
     } catch {
       // validation errors shown inline
@@ -96,9 +151,20 @@ export const ListingCreate: React.FC = () => {
     } catch {
       return;
     }
+
+    // Upload any remaining photos before submitting
+    let mediaUrls: string[] = uploadedUrls;
+    if (fileList.some((f) => !f.url)) {
+      try {
+        mediaUrls = await uploadPhotos();
+      } catch {
+        open?.({ type: "error", message: "Failed to upload photos. Please try again." });
+        return;
+      }
+    }
+
     const raw = form.getFieldsValue(true) as Record<string, unknown>;
 
-    // Convert features/checklist arrays to boolean flags
     const features = (raw.features as string[]) || [];
     const checklist = (raw.checklist as string[]) || [];
     const allFlags = [...FEATURES, ...CHECKLIST];
@@ -107,7 +173,6 @@ export const ListingCreate: React.FC = () => {
       boolFlags[f.value] = features.includes(f.value) || checklist.includes(f.value);
     }
 
-    // Strip null/empty/undefined
     const payload: Record<string, unknown> = {};
     for (const [k, v] of Object.entries({ ...raw, ...boolFlags })) {
       if (k === "features" || k === "checklist") continue;
@@ -116,6 +181,7 @@ export const ListingCreate: React.FC = () => {
       }
     }
     if (!hasCommission) delete payload.commissionPercent;
+    if (mediaUrls.length > 0) payload.mediaUrls = mediaUrls;
 
     setSubmitting(true);
     try {
@@ -138,10 +204,10 @@ export const ListingCreate: React.FC = () => {
     { title: "Pricing" },
     { title: "Location" },
     { title: "Description" },
+    { title: "Photos" },
     { title: "Features" },
   ];
 
-  // Hide/show sections by step
   const show = (step: number) => ({
     style: { display: current === step ? undefined : "none" },
   });
@@ -267,13 +333,8 @@ export const ListingCreate: React.FC = () => {
               <Col xs={24} sm={12}>
                 <Form.Item label="Commission">
                   <Space>
-                    <Switch
-                      checked={hasCommission}
-                      onChange={setHasCommission}
-                    />
-                    <Text type="secondary">
-                      {hasCommission ? "Enabled" : "Disabled"}
-                    </Text>
+                    <Switch checked={hasCommission} onChange={setHasCommission} />
+                    <Text type="secondary">{hasCommission ? "Enabled" : "Disabled"}</Text>
                   </Space>
                 </Form.Item>
               </Col>
@@ -323,8 +384,74 @@ export const ListingCreate: React.FC = () => {
             </Form.Item>
           </div>
 
-          {/* Step 4: Features & Checklist */}
+          {/* Step 4: Photos */}
           <div {...show(4)}>
+            <Text type="secondary" style={{ display: "block", marginBottom: 16 }}>
+              Upload property photos. Photos are optional but improve listing visibility.
+            </Text>
+            <Upload
+              listType="picture-card"
+              fileList={fileList}
+              accept="image/*"
+              multiple
+              beforeUpload={() => false} // prevent auto-upload
+              onChange={({ fileList: newList }) => setFileList(newList)}
+              onPreview={(file) => {
+                setPreviewImage(file.url || (file.thumbUrl ?? ""));
+                setPreviewOpen(true);
+              }}
+              onRemove={(file) => {
+                // Also remove from uploadedUrls if it was already uploaded
+                if (file.url) {
+                  setUploadedUrls((prev) => prev.filter((u) => u !== file.url));
+                }
+              }}
+              itemRender={(originNode, file) => (
+                <div style={{ position: "relative" }}>
+                  {originNode}
+                  {file.status === "done" && (
+                    <Button
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
+                      style={{ position: "absolute", top: 4, right: 4, zIndex: 1 }}
+                      onClick={() => {
+                        setFileList((prev) => prev.filter((f) => f.uid !== file.uid));
+                        if (file.url) {
+                          setUploadedUrls((prev) => prev.filter((u) => u !== file.url));
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+            >
+              <div>
+                <PlusOutlined />
+                <div style={{ marginTop: 8 }}>Add Photos</div>
+              </div>
+            </Upload>
+            {fileList.length > 0 && (
+              <Text type="secondary" style={{ display: "block", marginTop: 8 }}>
+                {fileList.length} photo{fileList.length !== 1 ? "s" : ""} selected
+                {uploadedUrls.length > 0 && ` (${uploadedUrls.length} uploaded)`}
+              </Text>
+            )}
+            {previewOpen && (
+              <Image
+                wrapperStyle={{ display: "none" }}
+                preview={{
+                  visible: previewOpen,
+                  onVisibleChange: (visible) => setPreviewOpen(visible),
+                  afterOpenChange: (visible) => { if (!visible) setPreviewImage(""); },
+                }}
+                src={previewImage}
+              />
+            )}
+          </div>
+
+          {/* Step 5: Features & Checklist */}
+          <div {...show(5)}>
             <Row gutter={32}>
               <Col xs={24} sm={12}>
                 <Form.Item name="features" label="Property Features">
@@ -348,26 +475,29 @@ export const ListingCreate: React.FC = () => {
           {/* Navigation */}
           <Space style={{ marginTop: 24 }}>
             {current > 0 && (
-              <Button onClick={() => setCurrent((c) => c - 1)}>
+              <Button onClick={() => setCurrent((c) => c - 1)} disabled={uploading}>
                 <ArrowLeftOutlined /> Back
               </Button>
             )}
             {current < steps.length - 1 && (
-              <Button type="primary" onClick={next}>
-                Next <ArrowRightOutlined />
+              <Button type="primary" onClick={next} loading={uploading}>
+                {current === 4 && fileList.some((f) => !f.url) ? "Upload & Next" : "Next"}{" "}
+                <ArrowRightOutlined />
               </Button>
             )}
             {current === steps.length - 1 && (
               <Button
                 type="primary"
                 icon={<SendOutlined />}
-                loading={submitting}
+                loading={submitting || uploading}
                 onClick={handleSubmit}
               >
                 Create Listing
               </Button>
             )}
-            <Button onClick={() => navigate("/listings")}>Cancel</Button>
+            <Button onClick={() => navigate("/listings")} disabled={submitting || uploading}>
+              Cancel
+            </Button>
           </Space>
         </Form>
       </Card>
