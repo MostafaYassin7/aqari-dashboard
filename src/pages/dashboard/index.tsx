@@ -150,7 +150,7 @@ export const DashboardPage: React.FC = () => {
                 title={
                   <span style={{ color: "rgba(255,255,255,0.85)" }}>
                     Pending Licenses &nbsp;
-                    <span style={{ fontWeight: 400, fontSize: 12 }}>تراخيص في الانتظار</span>
+                    <span style={{ fontWeight: 400, fontSize: 12 }}>طلبات ترخيص المُلاك والوكلاء بانتظار المراجعة</span>
                   </span>
                 }
                 value={pendingLicensesCount}

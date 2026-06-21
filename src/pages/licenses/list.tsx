@@ -116,12 +116,6 @@ interface License {
   // رقم جوال الوكيل
   agentPhone: string | null;
 
-  // ── معلومات المسوق (broker ONLY) ──────────────────────────
-  // رقم رخصة فال (رخصة الوساطة والتسويق العقاري)
-  falLicenseNumber: string | null;
-  // رقم عقد الوساطة (المسجل على منصة الهيئة العامة للعقار)
-  brokerageContractNumber: string | null;
-
   // ── المراجعة ──────────────────────────────────────────────
   // سبب الرفض
   rejectionReason: string | null;
@@ -469,14 +463,16 @@ export const LicenseList: React.FC = () => {
     pending: (
       <Empty
         image={
-          <CheckOutlined
-            style={{ fontSize: 48, color: "#52c41a" }}
-          />
+          <CheckOutlined style={{ fontSize: 48, color: "#52c41a" }} />
         }
         description={
           <>
-            <Title level={5}>All caught up!</Title>
-            <Text type="secondary">No pending licenses to review</Text>
+            <Title level={5} style={{ marginBottom: 4 }}>لا توجد تراخيص معلقة</Title>
+            <Text type="secondary" style={{ display: "block", lineHeight: 1.8 }}>
+              تراخيص المُلاك والوكلاء فقط تظهر هنا للمراجعة.
+              <br />
+              تراخيص المسوقين والمضيفين تُتحقق منها تلقائياً ولا تحتاج مراجعة.
+            </Text>
           </>
         }
       />
@@ -809,21 +805,8 @@ const LicenseDetailContent: React.FC<{
         </>
       )}
 
-      {/* ── معلومات المسوق — Broker Info (broker ONLY) ── */}
-      {license.advertiserType === "broker" && (
-        <>
-          <Divider style={{ margin: "4px 0" }} />
-          <div>
-            <Title level={5} style={{ marginBottom: 8, color: "#1677ff" }}>معلومات المسوق</Title>
-            <Descriptions {...descProps} items={[
-              // رقم رخصة فال — issued by الهيئة العامة للعقار
-              { key: "fal",      label: "رقم رخصة فال",      children: v(license.falLicenseNumber) },
-              // رقم عقد الوساطة — registered on eservicesredp.rega.gov.sa
-              { key: "brokerage",label: "رقم عقد الوساطة",   children: v(license.brokerageContractNumber) },
-            ]} />
-          </div>
-        </>
-      )}
+      {/* broker / host licenses are auto-verified and deleted after listing creation
+          — they never reach the admin panel, so no section is rendered */}
 
       {/* ── الإعلان المرتبط — Linked Listing (only if listingId is set) ── */}
       {license.listingId && license.listing && (
